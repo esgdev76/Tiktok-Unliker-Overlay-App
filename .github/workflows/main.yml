@@ -1,3 +1,4 @@
+
 name: Build TikTok Unlike Assistant APK
 
 on:
@@ -20,19 +21,30 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Extract Android project
+      - name: Extract project
         run: |
           unzip -q TikTokUnlikeAssistant.zip -d extracted
 
-      - name: Fix Java and Kotlin versions
+      - name: Fix Android Gradle configuration
         run: |
-          python3 - <<'PY'
-          from pathlib import Path
+          cat > extracted/TikTokUnlikeAssistant/app/build.gradle.kts <<'EOF'
+          plugins {
+              id("com.android.application")
+              id("org.jetbrains.kotlin.android")
+          }
 
-          p = Path("extracted/TikTokUnlikeAssistant/app/build.gradle.kts")
-          s = p.read_text()
+          android {
+              namespace = "com.example.tiktokunlikeassistant"
+              compileSdk = 35
 
-          fix = """
+              defaultConfig {
+                  applicationId = "com.example.tiktokunlikeassistant"
+                  minSdk = 26
+                  targetSdk = 35
+                  versionCode = 1
+                  versionName = "1.0"
+              }
+
               compileOptions {
                   sourceCompatibility = JavaVersion.VERSION_17
                   targetCompatibility = JavaVersion.VERSION_17
@@ -41,17 +53,8 @@ jobs:
               kotlinOptions {
                   jvmTarget = "17"
               }
-          """
-
-          s = s.replace(
-              "    defaultConfig {",
-              fix + "\\n    defaultConfig {",
-              1
-          )
-
-          p.write_text(s)
-          print("Java and Kotlin targets set to 17")
-          PY
+          }
+          EOF
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
