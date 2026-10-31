@@ -25,12 +25,47 @@ jobs:
         run: unzip -q TikTokUnlikeAssistantV2.zip -d extracted
 
       - name: Fix floating icon Kotlin type
+        shell: bash
         run: |
-          sed -i 's/private var bubble: TextView?/private var bubble: View?/' "$PROJECT_DIR/app/src/main/java/com/example/tiktokunlikeassistant/OverlayService.kt"
-          grep 'private var bubble:' "$PROJECT_DIR/app/src/main/java/com/example/tiktokunlikeassistant/OverlayService.kt"
+          FILE=$(find extracted -name OverlayService.kt -type f | head -n 1)
+
+          if [ -z "$FILE" ]; then
+            echo "OverlayService.kt not found!"
+            find extracted -type f
+            exit 1
+          fi
+
+          echo "Found file: $FILE"
+
+          python3 - "$FILE" <<'PY'
+          import sys
+          from pathlib import Path
+
+          p = Path(sys.argv[1])
+          s = p.read_text()
+          s = s.replace(
+              "private var bubble: TextView? = null",
+              "private var bubble: View? = null"
+          )
+          p.write_text(s)
+          print("Floating icon type fixed.")
+          PY
 
       - name: Build APK
-        run: gradle -p extracted/TikTokUnlikeAssistantV2 assembleDebug
+        shell: bash
+        run: |
+          GRADLE_FILE=$(find extracted -path '*/app/build.gradle.kts' -type f | head -n 1)
+
+          if [ -z "$GRADLE_FILE" ]; then
+            echo "Gradle project not found!"
+            exit 1
+          fi
+
+          PROJECT_DIR=$(dirname "$(dirname "$GRADLE_FILE")")
+
+          echo "Building project: $PROJECT_DIR"
+
+          gradle -p "$PROJECT_DIR" assembleDebug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
